@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{associated_token::AssociatedToken, token::{TransferChecked, transfer_checked}, token_interface::{Mint, TokenAccount, TokenInterface}};
+use anchor_spl::{associated_token::AssociatedToken, token::{CloseAccount, close_account}, token_interface::{Mint, TokenAccount, TokenInterface, TransferChecked, transfer_checked}};
 
 use crate::{errors::EscrowError, state::Escrow};
 
@@ -14,6 +14,7 @@ use crate::{errors::EscrowError, state::Escrow};
 pub struct Take<'info>{
     #[account(mut)]
     pub taker: Signer<'info>,
+    #[account(mut)]
     pub maker: SystemAccount<'info>,
     #[account(
         mut,
@@ -94,7 +95,7 @@ impl<'info> Take<'info> {
         // [&[&[u8]]; 1] 代表数组只有1个元素，元素类型是&[&[u8]]，也就是某个seeds的引用
         // &[&[u8]] 指一个切片的引用，这个切片的元素类型是&[u8]
         // u8 代表一个字节，无符号8位整数，范围 0-255
-        // b"escrow" 代表字节串，&[u8; 5]，普通字符串的类型是&str
+        // b"escrow" 代表字节串，即&[u8; 5]，普通字符串的类型是&str
         let signer_seeds: [&[&[u8]]; 1] = [
             &[
                 b"escrow", 
@@ -106,7 +107,7 @@ impl<'info> Take<'info> {
         transfer_checked(CpiContext::new_with_signer(
             self.token_program.to_account_info(),
          TransferChecked { 
-            from: self.escrow.to_account_info(), 
+            from: self.vault.to_account_info(), 
             mint: self.mint_a.to_account_info(), 
             to: self.taker_ata_a.to_account_info(), 
             authority: self.escrow.to_account_info() 
@@ -114,6 +115,13 @@ impl<'info> Take<'info> {
         &signer_seeds
         ), 
         self.vault.amount, self.mint_a.decimals)?;
+        close_account(CpiContext::new_with_signer(
+            self.token_program.to_account_info(), 
+            CloseAccount { 
+                account: self.vault.to_account_info(), 
+                destination: self.maker.to_account_info(), 
+                authority: self.escrow.to_account_info() }, 
+            &signer_seeds))?;
         Ok(())
     }
 }
