@@ -1,4 +1,4 @@
-use pinocchio::{AccountView, ProgramResult, error::ProgramError, instruction};
+use pinocchio::{AccountView, ProgramResult, error::ProgramError};
 use pinocchio_system::instructions::Transfer;
 
 
